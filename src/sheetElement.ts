@@ -19,6 +19,11 @@ export interface ISheetMetaData {
 	log: boolean;
 }
 
+type groupStyles = {
+	classes: string[]
+	styles: Properties
+}
+
 export class SheetElement extends MarkdownRenderChild {
 	private newLineRE: RegExp;
 	private cellBorderRE: RegExp;
@@ -32,8 +37,8 @@ export class SheetElement extends MarkdownRenderChild {
 	private rowMaxLength = 0;
 	private headerRow: number;
 	private headerCol: number;
-	private rowStyles: Properties[] = [];
-	private colStyles: Properties[] = [];
+	private rowStyles: groupStyles[] = [];
+	private colStyles: groupStyles[] = [];
 	private table: HTMLTableElement;
 	private tableHead: HTMLTableSectionElement;
 	private tableBody: HTMLTableSectionElement;
@@ -52,7 +57,6 @@ export class SheetElement extends MarkdownRenderChild {
 	}
 
 	async onload() {
-		console.log(this.source);
 		this.metaRE = new RegExp(String.raw`^${META_DELIMETER}\s*?(?:~(.*?))?\s*?\n+`, 'mg');
 		this.newLineRE = new RegExp(String.raw`\n`);
 		this.cellBorderRE = new RegExp(String.raw`(?<!\\)\|`);
@@ -198,24 +202,22 @@ export class SheetElement extends MarkdownRenderChild {
 			let styles: Properties = {};
 
 			const alignment = rowHead.match(this.headerRE);
-			if (!alignment) return styles;
+			if (!alignment) return { classes: [], styles };
 			else if (alignment[1] && alignment[2]) styles['textAlign'] = 'center';
 			else if (alignment[1]) styles['textAlign'] = 'left';
 			else if (alignment[2]) styles['textAlign'] = 'right';
 
 			// Parse ~
-			if (alignment[3])
-				(alignment[3].match(/\.\S+/g) || []).forEach(cssClass =>
-					styles =
-					{
-						...styles,
-						...(this.styles?.[cssClass.slice(1)]
+			const classes = alignment[3]?.match(/\.\S+/g)?.map(String) || [];
+			classes.forEach(cssClass => 
+				styles = {
+					...styles,
+					...(this.styles?.[cssClass.slice(1)]
 							|| {}
-						)
-					}
-				);
-
-			return styles;
+					)
+				}
+			);
+			return { classes, styles };
 		});
 
 		if (this.headerCol !== -1) this.rowStyles = this.contentGrid[0].map((_, i) =>
@@ -224,14 +226,14 @@ export class SheetElement extends MarkdownRenderChild {
 			let styles: Properties = {};
 
 			const alignment = rowHead.match(this.headerRE);
-			if (!alignment) return styles;
+			if (!alignment) return { classes: [], styles };
 			else if (alignment[1] && alignment[2]) styles['textAlign'] = 'center';
 			else if (alignment[1]) styles['textAlign'] = 'left';
 			else if (alignment[2]) styles['textAlign'] = 'right';
 
 			// Parse ~
-			alignment[3] && (
-				alignment[3].match(/\.\S+/g) || []).forEach(cssClass => 
+			const classes = alignment[3]?.match(/\.\S+/g)?.map(String) || [];
+			classes.forEach(cssClass => 
 				styles = {
 					...styles,
 					...(this.styles?.[cssClass.slice(1)]
@@ -239,7 +241,7 @@ export class SheetElement extends MarkdownRenderChild {
 					)
 				}
 			);
-			return styles;
+			return { classes, styles };
 		});
 	}
 
@@ -276,8 +278,14 @@ export class SheetElement extends MarkdownRenderChild {
 		let cls: string[] = [];
 		let cellStyle: Properties = this.globalStyle;
 
-		if (this.rowStyles[rowIndex]) cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex] };
-		if (this.colStyles[columnIndex]) cellStyle = { ...cellStyle, ...this.colStyles[columnIndex] };
+		if (this.rowStyles[rowIndex]) {
+			cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex].styles }; 
+			cls.push(...this.rowStyles[rowIndex].classes);
+		}
+		if (this.colStyles[columnIndex]) {
+			cellStyle = { ...cellStyle, ...this.rowStyles[columnIndex].styles }; 
+			cls.push(...this.rowStyles[columnIndex].classes);
+		}
 
 		if (cellStyles) {
 			cls = cellStyles.match(/(?<=\.)\S+/g) || [];
