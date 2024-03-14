@@ -52,6 +52,7 @@ export class SheetElement extends MarkdownRenderChild {
 	}
 
 	async onload() {
+		console.log(this.source);
 		this.metaRE = new RegExp(String.raw`^${META_DELIMETER}\s*?(?:~(.*?))?\s*?\n+`, 'mg');
 		this.newLineRE = new RegExp(String.raw`\n`);
 		this.cellBorderRE = new RegExp(String.raw`(?<!\\)\|`);

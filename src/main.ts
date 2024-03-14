@@ -30,8 +30,7 @@ export class ObsidianSpreadsheet extends Plugin {
 				ctx.addChild(
 					new SheetElement(
 						el,
-						new DOMParser().parseFromString(source, 'text/html')
-							.documentElement.textContent || source,
+						source,
 						ctx,
 						this.app,
 						this
