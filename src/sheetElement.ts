@@ -278,13 +278,14 @@ export class SheetElement extends MarkdownRenderChild {
 		let cls: string[] = [];
 		let cellStyle: Properties = this.globalStyle;
 
+		console.log({rowIndex, columnIndex});
 		if (this.rowStyles[rowIndex]) {
 			cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex].styles }; 
 			cls.push(...this.rowStyles[rowIndex].classes);
 		}
 		if (this.colStyles[columnIndex]) {
-			cellStyle = { ...cellStyle, ...this.rowStyles[columnIndex].styles }; 
-			cls.push(...this.rowStyles[columnIndex].classes);
+			cellStyle = { ...cellStyle, ...this.colStyles[columnIndex].styles }; 
+			cls.push(...this.colStyles[columnIndex].classes);
 		}
 
 		if (cellStyles) {
@@ -324,8 +325,8 @@ export class SheetElement extends MarkdownRenderChild {
 			this.domGrid[rowIndex][columnIndex - 1] === this.domGrid[rowIndex - 1][columnIndex]
 		) cell = this.domGrid[rowIndex][columnIndex - 1];
 		else {
-			const contentCell = document.createElement('div');
-			contentCell.classList.add('table-cell-wrapper');
+			// const contentCell = document.createElement('div');
+			// contentCell.classList.add('table-cell-wrapper');
 
 			cell = rowNode.createEl(cellTag, { cls });
 			cell.setAttribute('row-index', rowIndex.toString());
@@ -334,16 +335,16 @@ export class SheetElement extends MarkdownRenderChild {
 			MarkdownRenderer.render(
 				this.app,
 				'\u200B ' + (cellContent || '\u200B'), // Make sure markdown that requires to be at the start of a line is not rendered
-				contentCell,
+				cell,
 				'',
 				this
 			).then(() => {
-				contentCell.innerHTML =
-					contentCell
+				cell.innerHTML =
+					cell
 						.children[0]
 						.innerHTML
 						.replace(/^\u200B /g, '');
-				cell.append(contentCell);
+				// cell.append(contentCell);
 			});
 			Object.assign(cell.style, cellStyle);
 		}
