@@ -159,6 +159,7 @@ export class ObsidianSpreadsheet extends Plugin {
 					const DOMContent: HTMLTableCellElement = DOMCellArray[index].querySelector('.table-cell-wrapper') || DOMCellArray[index];
 					Object.assign(DOMContent.style, cellStyle);
 					DOMContent.classList.add(...classes);
+					DOMContent.innerText = DOMContent.innerText.split(/(?<![\\~])~(?!~)/)[0];
 				}
 				// merging currently does not work - the cells get merged but the `<`/`^` cells still stay on the table
 				// // merge left
