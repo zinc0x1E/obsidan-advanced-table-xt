@@ -1,5 +1,5 @@
 // import { MetaParser } from 'metaParser';
-import { MarkdownPostProcessorContext, Plugin, htmlToMarkdown } from 'obsidian';
+import { MarkdownPostProcessorContext, MarkdownView, Plugin, htmlToMarkdown } from 'obsidian';
 import { SheetSettingsTab } from './settings';
 import { SheetElement } from './sheetElement';
 import * as JSON5 from 'json5';
@@ -55,6 +55,63 @@ export class ObsidianSpreadsheet extends Plugin {
 			if (!this.settings.nativeProcessing) return;
 			if (ctx.frontmatter?.['disable-sheet'] == 'true') return;
 
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			console.log(activeView);
+			if (!(activeView?.getMode() === 'source')) {
+				const tableEls = el.querySelectorAll('table');
+				for (const tableEl of Array.from(tableEls))
+				{
+					if (!tableEl) return;
+					if (tableEl?.id === 'obsidian-sheets-parsed') return;
+
+					const sec = ctx.getSectionInfo(tableEl);
+					let source: string = '';
+					if (!sec)
+					{
+						tableEl.querySelectorAll(':scope td').forEach(({ childNodes }) => childNodes.forEach(node => 
+						{
+							if (node.nodeType == 3) // Text node type
+								node.textContent = node.textContent?.replace(/[*_`[\]$()]|[~=]{2}/g, '\\$&') || '';
+							// See https://help.obsidian.md/Editing+and+formatting/Basic+formatting+syntax#Styling+text
+						}));
+						tableEl.querySelectorAll(':scope a.internal-link').forEach((link: HTMLAnchorElement) => 
+						{ 
+							const parsedLink = document.createElement('span');
+							parsedLink.innerText = `[[${link.getAttr('href')}|${link.innerText}]]`;
+							link.replaceWith(parsedLink);
+						});
+						tableEl.querySelectorAll(':scope span.math').forEach((link: HTMLSpanElement) =>
+							link.textContent?.trim().length ? link.textContent = `$${link.textContent || ''}$` : null
+						);
+
+						source = htmlToMarkdown(tableEl).trim().replace(/\\\\/g, '$&$&');
+						if (!source) return;
+					}
+					else
+					{
+						const {text, lineStart, lineEnd} = sec;
+						const textContent = text
+							.split('\n')
+							.slice(lineStart, 1 + lineEnd)
+							.map(line => line.replace(/^.*?(?=\|(?![^[]*]))/, ''));
+					
+						if (
+							!textContent
+								.filter((row) => /(?<!\\)\|/.test(row))
+								.map((row) => row.split(/(?<!\\)\|/)
+									.map(cell => cell.trim()))
+								.every(
+									(row) => !row.pop()?.trim() && !row.shift()?.trim()
+								)
+						) return; // Need a better way to figure out if not randering a table; use test for validity on actual table function here since if get to here table is valid.
+						source = textContent.join('\n');
+					}
+							
+					tableEl.empty();
+					return ctx.addChild(new SheetElement(tableEl, source.trim(), ctx, this.app, this));
+				}
+			}
+
 			const tableEl = el.closest('table');
 			if (!tableEl) return;
 			if (tableEl?.id === 'obsidian-sheets-parsed') return;
@@ -74,12 +131,12 @@ export class ObsidianSpreadsheet extends Plugin {
 				}, [] as number[]);
 
 			const tableHead = Array.from(tableEl.querySelectorAll('th'));
-			// const tableWidth = tableHead.length;
+			const tableWidth = tableHead.length;
 			const DOMCellArray = [...tableHead, ...Array.from(tableEl.querySelectorAll('td'))];
 
 			for (const index of toChange) {
-				// const column = index % tableWidth;
-				// const row = Math.floor(index / tableWidth);
+				const column = index % tableWidth;
+				const row = Math.floor(index / tableWidth);
 				const cellContent = rawMarkdownArray[index];
 				if (/(?<!~|\\)~(?!~)/.test(cellContent)) {
 					const cellStyles = cellContent.split(/(?<![\\~])~(?!~)/)[1];
@@ -101,30 +158,31 @@ export class ObsidianSpreadsheet extends Plugin {
 					DOMContent.classList.add(...classes);
 				}
 				// merging currently does not work - the cells get merged but the `<`/`^` cells still stay on the table
-				// // merge left
-				// else if (/^\s*<\s*$/.test(cellContent) && column > 0) { 
-				// 	if (!DOMCellArray[index - 1].colSpan) DOMCellArray[index - 1].colSpan = 1;
-				// 	DOMCellArray[index - 1].colSpan += 1;
-				// 	DOMCellArray[index].remove(); // doesn't work?
-				// 	delete DOMCellArray[index];
-				// 	DOMCellArray[index] = DOMCellArray[index - 1];
-				// }
-				// // merge up
-				// else if (/^\s*\^\s*$/.test(cellContent) && row > 1) {
-				// 	if (!DOMCellArray[index - tableWidth].rowSpan) DOMCellArray[index - 1].rowSpan = 1;
-				// 	DOMCellArray[index - tableWidth].rowSpan += 1;
-				// 	DOMCellArray[index].remove();
-				// 	delete DOMCellArray[index];
-				// 	DOMCellArray[index] = DOMCellArray[index - tableWidth];
-				// } 
+				// merge left
+				else if (/^\s*<\s*$/.test(cellContent) && column > 0) { 
+					if (!DOMCellArray[index - 1].colSpan) DOMCellArray[index - 1].colSpan = 1;
+					DOMCellArray[index - 1].colSpan += 1;
+					console.log(DOMCellArray[index]);
+					DOMCellArray[index].remove(); // doesn't work?
+					delete DOMCellArray[index];
+					DOMCellArray[index] = DOMCellArray[index - 1];
+				}
+				// merge up
+				else if (/^\s*\^\s*$/.test(cellContent) && row > 1) {
+					if (!DOMCellArray[index - tableWidth].rowSpan) DOMCellArray[index - 1].rowSpan = 1;
+					DOMCellArray[index - tableWidth].rowSpan += 1;
+					console.log(DOMCellArray[index]);
+					DOMCellArray[index].remove();
+					delete DOMCellArray[index];
+					DOMCellArray[index] = DOMCellArray[index - tableWidth];
+				} 
 				// TODO: row headers
 				// else if (/^\s*-+\s*$/.test(cellContent)) {
 				// } 
 				// classes and styling
 			}
 
-			tableEl.id = 'obsidian-sheets-parsed';
-			// ctx.addChild(tableEl);
+			return tableEl.id = 'obsidian-sheets-parsed';
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
