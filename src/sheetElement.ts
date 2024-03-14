@@ -14,14 +14,12 @@ const MERGE_UP_SIGNIFIER = '^',
 	HEADER_DELIMETER = '-',
 	META_DELIMETER = '---';
 
-export interface ISheetMetaData
-{
+export interface ISheetMetaData {
 	classes: { [key: string]: Properties };
 	log: boolean;
 }
 
-export class SheetElement extends MarkdownRenderChild 
-{
+export class SheetElement extends MarkdownRenderChild {
 	private newLineRE: RegExp;
 	private cellBorderRE: RegExp;
 	private metaRE: RegExp;
@@ -42,21 +40,22 @@ export class SheetElement extends MarkdownRenderChild
 	private domGrid: HTMLTableCellElement[][] = [];
 
 	constructor(
-		private readonly el: HTMLElement,
+		private readonly el: HTMLTableElement,
 		private readonly source: string,
 		private readonly ctx: MarkdownPostProcessorContext,
 		private readonly app: App,
 		private readonly plugin: ObsidianSpreadsheet,
-	) 
-	{
+	) {
 		super(el);
 		// TODO: Handle settings here -> move :11-12
 		// console.log(this);
 	}
 
-	async onload() 
-	{
-		this.initRegex();
+	async onload() {
+		this.metaRE = new RegExp(String.raw`^${META_DELIMETER}\s*?(?:~(.*?))?\s*?\n+`, 'mg');
+		this.newLineRE = new RegExp(String.raw`\n`);
+		this.cellBorderRE = new RegExp(String.raw`(?<!\\)\|`);
+		this.headerRE = new RegExp(String.raw`^\s*?(:)?(?:${HEADER_DELIMETER})+?(:)?\s*?(?:(?<!\\)~(.*?))?$`);
 
 		// Parse code block input
 		this.parseInputToGrid();
@@ -68,7 +67,7 @@ export class SheetElement extends MarkdownRenderChild
 		this.normalizeGrid();
 
 		// Start building DOM element
-		this.table = this.el.createEl('table');
+		this.table = this.el;
 		this.table.id = 'obsidian-sheets-parsed';
 		this.tableHead = this.table.createEl('thead');
 		this.tableBody = this.table.createEl('tbody');
@@ -85,19 +84,9 @@ export class SheetElement extends MarkdownRenderChild
 		// console.log(thisGrid);
 	}
 
-	onunload() 
-	{}
+	onunload() { }
 
-	initRegex()
-	{
-		this.metaRE = new RegExp(String.raw`^${META_DELIMETER}\s*?(?:~(.*?))?\s*?\n+`, 'mg');
-		this.newLineRE = new RegExp(String.raw`\n`);
-		this.cellBorderRE = new RegExp(String.raw`(?<!\\)\|`);
-		this.headerRE = new RegExp(String.raw`^\s*?(:)?(?:${HEADER_DELIMETER})+?(:)?\s*?(?:(?<!\\)~(.*?))?$`);
-	}
-
-	displayError(error?: string) 
-	{
+	displayError(error?: string) {
 		this.el.createDiv({
 			text: `\nError: \`${error}\`\n\n`,
 			cls: 'obs-sheets_error',
@@ -105,33 +94,29 @@ export class SheetElement extends MarkdownRenderChild
 		this.unload();
 	}
 
-	parseInputToGrid()
-	{
-		if (!this.metaRE.test(this.source)) return this.contentGrid = 
+	parseInputToGrid() {
+		if (!this.metaRE.test(this.source)) return this.contentGrid =
 			this.source.split(this.newLineRE)
 				.filter((row) => this.cellBorderRE.test(row))
 				.map((row) => row.split(this.cellBorderRE)
 					.map(cell => cell.trim()));
-		
+
 		const [meta, unparsedStyle, source] = this.source.split(this.metaRE);
-		
+
 		this.parseMetadata(meta);
-		
-		if (unparsedStyle)
-		{
+
+		if (unparsedStyle) {
 			let cellStyle: Properties = {};
 			const cls = unparsedStyle.match(/\.\S+/g) || [];
-			cls.forEach(cssClass => 
-			{
+			cls.forEach(cssClass => {
 				cellStyle = { ...cellStyle, ...(this.styles?.[cssClass.slice(1)] || {}) };
 			});
 
 			const inlineStyle = unparsedStyle.match(/\{.*\}/)?.[0] || '{}';
-			try 
-			{
+			try {
 				cellStyle = { ...cellStyle, ...JSON5.parse(inlineStyle) };
-			} 
-			catch 
+			}
+			catch
 			{
 				console.error(`Invalid cell style \`${inlineStyle}\``);
 			}
@@ -144,32 +129,27 @@ export class SheetElement extends MarkdownRenderChild
 				.map(cell => cell.trim()));
 	}
 
-	parseMetadata(meta: string)
-	{
+	parseMetadata(meta: string) {
 		let metadata: Partial<ISheetMetaData>;
 
-		try 
-		{
+		try {
 			metadata = JSON5.parse(meta);
-		} 
-		catch (error) 
-		{
+		}
+		catch (error) {
 			return this.displayError('Metadata is not proper JSON');
 		}
 
 		this.metadata = metadata;
 
 		// Separate this out when more metadata is introduced
-		if (metadata.classes) 
-		{
+		if (metadata.classes) {
 			this.styles = metadata.classes;
 		}
 		// TODO: Add logging and debugging in metadata
 		// if (metadata.log) this.logging = true
 	}
 
-	validateInput()
-	{
+	validateInput() {
 		if (
 			!this.contentGrid.every(
 				(row) => !row.pop()?.trim() && !row.shift()?.trim()
@@ -177,10 +157,8 @@ export class SheetElement extends MarkdownRenderChild
 		) return this.displayError('Malformed table');
 	}
 
-	normalizeGrid()
-	{
-		for (let rowIndex = 0; rowIndex < this.contentGrid.length; rowIndex++) 
-		{
+	normalizeGrid() {
+		for (let rowIndex = 0; rowIndex < this.contentGrid.length; rowIndex++) {
 			const row = this.contentGrid[rowIndex];
 			if (this.rowMaxLength < row.length) this.rowMaxLength = row.length;
 
@@ -197,15 +175,14 @@ export class SheetElement extends MarkdownRenderChild
 		);
 	}
 
-	getHeaderBoundaries()
-	{
+	getHeaderBoundaries() {
 		this.headerRow = this.contentGrid.findIndex(
 			(headerRow) =>
 				headerRow.every((headerCol) => this.headerRE.test(headerCol))
 		);
 
 		// transpose grid
-		this.headerCol = this.contentGrid[0].map((_, i) => 
+		this.headerCol = this.contentGrid[0].map((_, i) =>
 			this.contentGrid.map(row => row[i])
 		)
 			.findIndex(
@@ -214,11 +191,9 @@ export class SheetElement extends MarkdownRenderChild
 			);
 	}
 
-	getHeaderStyles()
-	{
+	getHeaderStyles() {
 		// TODO: Add same syntax of custom styling as cells
-		if (this.headerRow !== -1) this.colStyles = this.contentGrid[this.headerRow].map(rowHead => 
-		{
+		if (this.headerRow !== -1) this.colStyles = this.contentGrid[this.headerRow].map(rowHead => {
 			let styles: Properties = {};
 
 			const alignment = rowHead.match(this.headerRE);
@@ -229,23 +204,22 @@ export class SheetElement extends MarkdownRenderChild
 
 			// Parse ~
 			if (alignment[3])
-				(alignment[3].match(/\.\S+/g) || []).forEach(cssClass => 
-					styles = 
-						{ 
-							...styles, 
-							...(this.styles?.[cssClass.slice(1)] 
-								|| {}
-							) 
-						}
+				(alignment[3].match(/\.\S+/g) || []).forEach(cssClass =>
+					styles =
+					{
+						...styles,
+						...(this.styles?.[cssClass.slice(1)]
+							|| {}
+						)
+					}
 				);
 
 			return styles;
 		});
 
-		if (this.headerCol !== -1) this.rowStyles = this.contentGrid[0].map((_, i) => 
+		if (this.headerCol !== -1) this.rowStyles = this.contentGrid[0].map((_, i) =>
 			this.contentGrid.map(row => row[i])
-		)[this.headerCol].map(rowHead => 
-		{
+		)[this.headerCol].map(rowHead => {
 			let styles: Properties = {};
 
 			const alignment = rowHead.match(this.headerRE);
@@ -255,32 +229,28 @@ export class SheetElement extends MarkdownRenderChild
 			else if (alignment[2]) styles['textAlign'] = 'right';
 
 			// Parse ~
-			if (alignment[3])
-				(alignment[3].match(/\.\S+/g) || []).forEach(cssClass => 
-					styles = 
-						{ 
-							...styles, 
-							...(this.styles?.[cssClass.slice(1)] 
-								|| {}
-							) 
-						}
-				);
-
+			alignment[3] && (
+				alignment[3].match(/\.\S+/g) || []).forEach(cssClass => 
+				styles = {
+					...styles,
+					...(this.styles?.[cssClass.slice(1)]
+							|| {}
+					)
+				}
+			);
 			return styles;
 		});
 	}
 
-	buildDomTable()
-	{
+	buildDomTable() {
 		for (
-			let rowIndex = 0; 
-			rowIndex < this.contentGrid.length; 
+			let rowIndex = 0;
+			rowIndex < this.contentGrid.length;
 			rowIndex++
 		) this.buildDomRow(rowIndex);
 	}
 
-	buildDomRow(rowIndex: number)
-	{
+	buildDomRow(rowIndex: number) {
 		const rowContents = this.contentGrid[rowIndex];
 		let rowNode = this.tableBody.createEl('tr');
 
@@ -296,10 +266,9 @@ export class SheetElement extends MarkdownRenderChild
 		) this.buildDomCell(rowIndex, columnIndex, rowNode);
 	}
 
-	async buildDomCell(rowIndex: number, columnIndex: number, rowNode: HTMLElement)
-	{
+	async buildDomCell(rowIndex: number, columnIndex: number, rowNode: HTMLElement) {
 		const [
-			cellContent, 
+			cellContent,
 			cellStyles
 		] = this.contentGrid[rowIndex][columnIndex].split(/(?<![\\~])~(?!~)/);
 
@@ -309,20 +278,17 @@ export class SheetElement extends MarkdownRenderChild
 		if (this.rowStyles[rowIndex]) cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex] };
 		if (this.colStyles[columnIndex]) cellStyle = { ...cellStyle, ...this.colStyles[columnIndex] };
 
-		if (cellStyles) 
-		{
+		if (cellStyles) {
 			cls = cellStyles.match(/(?<=\.)\S+/g) || [];
-			cls.forEach(cssClass => 
-			{
+			cls.forEach(cssClass => {
 				cellStyle = { ...cellStyle, ...(this.styles?.[cssClass] || {}) };
 			});
 
 			const inlineStyle = cellStyles.match(/\{.*\}/)?.[0] || '{}';
-			try 
-			{
+			try {
 				cellStyle = { ...cellStyle, ...JSON5.parse(inlineStyle) };
-			} 
-			catch 
+			}
+			catch
 			{
 				console.error(`Invalid cell style \`${inlineStyle}\``);
 			}
@@ -334,40 +300,41 @@ export class SheetElement extends MarkdownRenderChild
 		if (columnIndex === this.headerCol || rowIndex === this.headerRow) return;
 		else if (columnIndex < this.headerCol || rowIndex < this.headerRow) cellTag = 'th';
 
-		if (cellContent == MERGE_LEFT_SIGNIFIER && this.domGrid?.[rowIndex]?.[columnIndex - 1]) 
-		{
+		if (cellContent == MERGE_LEFT_SIGNIFIER && this.domGrid?.[rowIndex]?.[columnIndex - 1]) {
 			cell = this.domGrid[rowIndex][columnIndex - 1];
 			cell?.colSpan || Object.assign(cell, { colSpan: 1 });
 			cell.colSpan = columnIndex - parseInt(cell.getAttribute('col-index') || columnIndex.toString()) + 1;
 		}
-		else if (cellContent == MERGE_UP_SIGNIFIER && this.domGrid?.[rowIndex - 1]?.[columnIndex]) 
-		{
+		else if (cellContent == MERGE_UP_SIGNIFIER && this.domGrid?.[rowIndex - 1]?.[columnIndex]) {
 			cell = this.domGrid[rowIndex - 1][columnIndex];
 			cell?.rowSpan || Object.assign(cell, { rowSpan: 1 });
 			cell.rowSpan = rowIndex - parseInt(cell.getAttribute('row-index') || '0') + 1;
 		}
 		else if (
 			this.domGrid?.[rowIndex - 1]?.[columnIndex] && this.domGrid?.[rowIndex]?.[columnIndex - 1] &&
-			this.domGrid[rowIndex][columnIndex - 1] === this.domGrid[rowIndex - 1][columnIndex] 
+			this.domGrid[rowIndex][columnIndex - 1] === this.domGrid[rowIndex - 1][columnIndex]
 		) cell = this.domGrid[rowIndex][columnIndex - 1];
-		else 
-		{
+		else {
+			const contentCell = document.createElement('div');
+			contentCell.classList.add('table-cell-wrapper');
+
 			cell = rowNode.createEl(cellTag, { cls });
 			cell.setAttribute('row-index', rowIndex.toString());
 			cell.setAttribute('col-index', columnIndex.toString());
-			// cell.innerHTML = (new Converter({ backslashEscapesHTMLTags: true, strikethrough: true, })).makeHtml(' ' + cellContent);
-			// console.log((new Converter({ backslashEscapesHTMLTags: true, strikethrough: true, })).makeHtml(' ' + cellContent));
-			
+
 			MarkdownRenderer.render(
 				this.app,
 				'\u200B ' + (cellContent || '\u200B'), // Make sure markdown that requires to be at the start of a line is not rendered
-				cell,
+				contentCell,
 				'',
 				this
-			).then(() => 
-			{
-				cell.children[0].childNodes[0].textContent = cell.children[0].childNodes[0].textContent?.replace(/^\u200B/, '') || '';
-				if (!this.plugin.settings.paragraphs) cell.innerHTML = cell.children[0].innerHTML;
+			).then(() => {
+				contentCell.innerHTML =
+					contentCell
+						.children[0]
+						.innerHTML
+						.replace(/^\u200B /g, '');
+				cell.append(contentCell);
 			});
 			Object.assign(cell.style, cellStyle);
 		}
