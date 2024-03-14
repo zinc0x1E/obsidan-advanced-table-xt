@@ -278,7 +278,6 @@ export class SheetElement extends MarkdownRenderChild {
 		let cls: string[] = [];
 		let cellStyle: Properties = this.globalStyle;
 
-		console.log({rowIndex, columnIndex});
 		if (this.rowStyles[rowIndex]) {
 			cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex].styles }; 
 			cls.push(...this.rowStyles[rowIndex].classes);
