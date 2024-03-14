@@ -89,10 +89,14 @@ export class ObsidianSpreadsheet extends Plugin {
 					else
 					{
 						const {text, lineStart, lineEnd} = sec;
-						const textContent = text
+						let textContent = text
 							.split('\n')
 							.slice(lineStart, 1 + lineEnd)
 							.map(line => line.replace(/^.*?(?=\|(?![^[]*]))/, ''));
+						const endIndex = textContent.findIndex(line => /^(?!\|)/.test(line));
+
+						if (textContent[0].startsWith('```')) return;
+						if (endIndex !== -1) textContent = textContent.slice(0, endIndex + 1);
 					
 						if (
 							!textContent
