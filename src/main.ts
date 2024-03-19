@@ -163,24 +163,23 @@ export class ObsidianSpreadsheet extends Plugin {
 					DOMContent.innerText = DOMContent.innerText.split(/(?<![\\~])~(?!~)/)[0];
 				}
 				// merging currently does not work - the cells get merged but the `<`/`^` cells still stay on the table
-				// // merge left
-				// else if (/^\s*<\s*$/.test(cellContent) && column > 0) { 
-				// 	if (!DOMCellArray[index - 1].colSpan) DOMCellArray[index - 1].colSpan = 1;
-				// 	DOMCellArray[index - 1].colSpan += 1;
-				// 	console.log(DOMCellArray[index]);
-				// 	DOMCellArray[index].remove(); // doesn't work?
-				// 	delete DOMCellArray[index];
-				// 	DOMCellArray[index] = DOMCellArray[index - 1];
-				// }
-				// // merge up
-				// else if (/^\s*\^\s*$/.test(cellContent) && row > 1) {
-				// 	if (!DOMCellArray[index - tableWidth].rowSpan) DOMCellArray[index - 1].rowSpan = 1;
-				// 	DOMCellArray[index - tableWidth].rowSpan += 1;
-				// 	console.log(DOMCellArray[index]);
-				// 	DOMCellArray[index].remove();
-				// 	delete DOMCellArray[index];
-				// 	DOMCellArray[index] = DOMCellArray[index - tableWidth];
-				// } 
+				// merge left
+				else if (/^\s*<\s*$/.test(cellContent) && column > 0) { 
+					if (!DOMCellArray[index - 1].colSpan) DOMCellArray[index - 1].colSpan = 1;
+					DOMCellArray[index - 1].colSpan += 1;
+					// .remove() does not work - table editor renders on top and rebuilds the cell
+					DOMCellArray[index].style.display = 'none'; 
+					delete DOMCellArray[index];
+					DOMCellArray[index] = DOMCellArray[index - 1];
+				}
+				// merge up
+				else if (/^\s*\^\s*$/.test(cellContent) && row > 1) {
+					if (!DOMCellArray[index - tableWidth].rowSpan) DOMCellArray[index - 1].rowSpan = 1;
+					DOMCellArray[index - tableWidth].rowSpan += 1;
+					DOMCellArray[index].style.display = 'none';
+					delete DOMCellArray[index];
+					DOMCellArray[index] = DOMCellArray[index - tableWidth];
+				} 
 				// TODO: row headers
 				// else if (/^\s*-+\s*$/.test(cellContent)) {
 				// } 
