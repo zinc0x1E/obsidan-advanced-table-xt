@@ -1,6 +1,8 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 
+const SEM_VER_REG = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/gm
+
 let manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 const { minAppVersion, version } = manifest;
 
@@ -15,8 +17,12 @@ switch (process.argv[2])
 	case '--minor':
 		targetVersion = version.replace(/(\d+)\.(\d+)\.\d+/, (version, major, minor) => `${major}.${Number(minor) + 1}.0`);
 		break;
-	default:
+	case '--patch':
 		targetVersion = version.replace(/(\d+)\.(\d+)\.(\d+)/, (version, major, minor, patch) => `${major}.${minor}.${Number(patch) + 1}`);
+		break;
+	default:
+		// e.g. 1.0.0-alpha.20250915121059
+		targetVersion = version.replace(/(\d+)\.(\d+)\.(\d+)/, (version, major, minor, patch) => `${major}.${minor}.${patch}-alpha.${(new Date()).toISOString().slice(0, -4).replaceAll(/\D/gm, '')}`);
 }
 
 manifest.version = targetVersion;
