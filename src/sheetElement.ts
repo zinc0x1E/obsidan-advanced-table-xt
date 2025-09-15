@@ -209,7 +209,7 @@ export class SheetElement extends MarkdownRenderChild {
 
 			// Parse ~
 			const classes = alignment[3]?.match(/\.\S+/g)?.map(String) || [];
-			classes.forEach(cssClass => 
+			classes.forEach(cssClass =>
 				styles = {
 					...styles,
 					...(this.styles?.[cssClass.slice(1)]
@@ -233,7 +233,7 @@ export class SheetElement extends MarkdownRenderChild {
 
 			// Parse ~
 			const classes = alignment[3]?.match(/\.\S+/g)?.map(String) || [];
-			classes.forEach(cssClass => 
+			classes.forEach(cssClass =>
 				styles = {
 					...styles,
 					...(this.styles?.[cssClass.slice(1)]
@@ -279,11 +279,11 @@ export class SheetElement extends MarkdownRenderChild {
 		let cellStyle: Properties = this.globalStyle;
 
 		if (this.rowStyles[rowIndex]) {
-			cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex].styles }; 
+			cellStyle = { ...cellStyle, ...this.rowStyles[rowIndex].styles };
 			cls.push(...this.rowStyles[rowIndex].classes);
 		}
 		if (this.colStyles[columnIndex]) {
-			cellStyle = { ...cellStyle, ...this.colStyles[columnIndex].styles }; 
+			cellStyle = { ...cellStyle, ...this.colStyles[columnIndex].styles };
 			cls.push(...this.colStyles[columnIndex].classes);
 		}
 
@@ -310,11 +310,17 @@ export class SheetElement extends MarkdownRenderChild {
 		else if (columnIndex < this.headerCol || rowIndex < this.headerRow) cellTag = 'th';
 
 		if (cellContent == MERGE_LEFT_SIGNIFIER && this.domGrid?.[rowIndex]?.[columnIndex - 1]) {
+			// "<" cell
+			// no render triggered. only changes the col span of its left cell. left cell is rendered in prev iteration.
+
 			cell = this.domGrid[rowIndex][columnIndex - 1];
 			cell?.colSpan || Object.assign(cell, { colSpan: 1 });
 			cell.colSpan = columnIndex - parseInt(cell.getAttribute('col-index') || columnIndex.toString()) + 1;
 		}
 		else if (cellContent == MERGE_UP_SIGNIFIER && this.domGrid?.[rowIndex - 1]?.[columnIndex]) {
+			// "^" cell
+			// no render triggered. only changes the row span of its upper cell. upper cell is rendered in prev iteration
+
 			cell = this.domGrid[rowIndex - 1][columnIndex];
 			cell?.rowSpan || Object.assign(cell, { rowSpan: 1 });
 			cell.rowSpan = rowIndex - parseInt(cell.getAttribute('row-index') || '0') + 1;
@@ -322,8 +328,21 @@ export class SheetElement extends MarkdownRenderChild {
 		else if (
 			this.domGrid?.[rowIndex - 1]?.[columnIndex] && this.domGrid?.[rowIndex]?.[columnIndex - 1] &&
 			this.domGrid[rowIndex][columnIndex - 1] === this.domGrid[rowIndex - 1][columnIndex]
-		) cell = this.domGrid[rowIndex][columnIndex - 1];
+		) {
+			// left cell is the same with upper cell, i.e., table look like this:
+			//
+			// | A | < |
+			// | ^ | B |
+			//
+			// this.domGrid[rowIndex][columnIndex] is the cell "B", it will not be rendered
+			//
+			// no render triggered
+			cell = this.domGrid[rowIndex][columnIndex - 1];
+		}
 		else {
+			// plain cell
+			// render triggered
+
 			// const contentCell = document.createElement('div');
 			// contentCell.classList.add('table-cell-wrapper');
 
