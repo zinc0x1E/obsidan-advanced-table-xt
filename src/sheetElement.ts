@@ -7,7 +7,7 @@ import {
 } from 'obsidian';
 import type { Properties } from 'csstype';
 import * as JSON5 from 'json5';
-import * as deepmerge from "deepmerge";
+import * as deepmerge from 'deepmerge';
 
 // TODO: Move these to settings
 const MERGE_UP_SIGNIFIER = '^',
