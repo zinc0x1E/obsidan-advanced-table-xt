@@ -11,7 +11,7 @@ import * as JSON5 from 'json5';
 // TODO: Move these to settings
 const MERGE_UP_SIGNIFIER = '^',
 	MERGE_LEFT_SIGNIFIER = '<',
-	MERGE_RIGHT_SIGNIFIER = '<',
+	MERGE_RIGHT_SIGNIFIER = '>',
 	HEADER_DELIMETER = '-',
 	META_DELIMETER = '---';
 
