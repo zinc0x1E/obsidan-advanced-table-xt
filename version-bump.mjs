@@ -27,7 +27,7 @@ versions[targetVersion] = minAppVersion;
 writeFileSync('versions.json', JSON.stringify(versions, null, '\t'));
 
 console.log('building');
-execSync(String.raw`pnpm run build`);
+execSync(String.raw`npm run build`);
 console.log('updating git');
-execSync(String.raw`git commit -am 'version bump'; git push`,  { 'shell': 'powershell.exe' });
+execSync(String.raw`git commit -am 'version bump'; git push`);
 execSync(String.raw`gh release create ${targetVersion} .\main.js .\styles.css .\manifest.json --generate-notes`);
