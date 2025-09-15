@@ -235,7 +235,7 @@ export class SheetElement extends MarkdownRenderChild {
 
 					const headerContent = matchArr[1];
 					const stylesFromHeaderContent = this.extractStylesFromHeaderContent(headerContent);
-					this.colStyles[colIdx] = deepmerge(this.colStyles[colIdx], stylesFromHeaderContent);
+					this.colStyles[colIdx] = deepmerge.all<groupStyles>([this.colStyles[colIdx], stylesFromHeaderContent]);
 				}
 			}
 		}
@@ -280,7 +280,7 @@ export class SheetElement extends MarkdownRenderChild {
 
 					const headerContent = matchArr[1];
 					const stylesFromHeaderContent = this.extractStylesFromHeaderContent(headerContent);
-					this.rowStyles[colIdx] = deepmerge(this.rowStyles[rowIdx], stylesFromHeaderContent);
+					this.rowStyles[colIdx] = deepmerge.all<groupStyles>([this.rowStyles[rowIdx], stylesFromHeaderContent]);
 				}
 			}
 		}
@@ -413,7 +413,7 @@ export class SheetElement extends MarkdownRenderChild {
 	}
 
 	// ==== ZN FORK START ====
-	extractStylesFromHeaderContent(headerContent: string) {
+	extractStylesFromHeaderContent(headerContent: string): groupStyles{
 		let styles: Properties = {};
 		const alignment = headerContent.match(this.headerRE);
 		if (!alignment) return { classes: [], styles };
