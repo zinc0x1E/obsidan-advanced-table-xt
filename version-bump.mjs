@@ -30,4 +30,4 @@ console.log('building');
 execSync(String.raw`npm run build`);
 console.log('updating git');
 execSync(String.raw`git commit -am 'version bump'; git push`);
-execSync(String.raw`gh release create ${targetVersion} .\main.js .\styles.css .\manifest.json --generate-notes`);
+execSync(String.raw`gh release create ${targetVersion} ./main.js ./styles.css ./manifest.json --generate-notes`);
