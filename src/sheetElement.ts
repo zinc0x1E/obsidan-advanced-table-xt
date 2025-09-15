@@ -11,7 +11,6 @@ import * as JSON5 from 'json5';
 // TODO: Move these to settings
 const MERGE_UP_SIGNIFIER = '^',
 	MERGE_LEFT_SIGNIFIER = '<',
-	MERGE_RIGHT_SIGNIFIER = '>',
 	HEADER_DELIMETER = '-',
 	META_DELIMETER = '---';
 
@@ -312,11 +311,6 @@ export class SheetElement extends MarkdownRenderChild {
 
 		if (cellContent == MERGE_LEFT_SIGNIFIER && this.domGrid?.[rowIndex]?.[columnIndex - 1]) {
 			cell = this.domGrid[rowIndex][columnIndex - 1];
-			cell?.colSpan || Object.assign(cell, { colSpan: 1 });
-			cell.colSpan = columnIndex - parseInt(cell.getAttribute('col-index') || columnIndex.toString()) + 1;
-		}
-		else if (cellContent == MERGE_RIGHT_SIGNIFIER && this.domGrid?.[rowIndex]?.[columnIndex + 1]) {
-			cell = this.domGrid[rowIndex][columnIndex + 1];
 			cell?.colSpan || Object.assign(cell, { colSpan: 1 });
 			cell.colSpan = columnIndex - parseInt(cell.getAttribute('col-index') || columnIndex.toString()) + 1;
 		}
