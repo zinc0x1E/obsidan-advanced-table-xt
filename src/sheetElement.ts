@@ -7,6 +7,7 @@ import {
 } from 'obsidian';
 import type { Properties } from 'csstype';
 import * as JSON5 from 'json5';
+import * as deepmerge from "deepmerge";
 
 // TODO: Move these to settings
 const MERGE_UP_SIGNIFIER = '^',
@@ -220,6 +221,26 @@ export class SheetElement extends MarkdownRenderChild {
 			return { classes, styles };
 		});
 
+		// ==== ZN FORK START ====
+		// any content like "[<col.s: ---: ~ .class1 {"font-size": "2px"} >]" is COL style in any header ROW
+		if (this.headerRow !== -1) {
+			for (let rowIdx = 0; rowIdx < this.headerRow; rowIdx++) {
+				for (let colIdx = 0; colIdx < this.contentGrid[rowIdx].length; colIdx++) {
+					const rowHeaderCell = this.contentGrid[rowIdx][colIdx];
+					const matchArr = rowHeaderCell.match(/\[<col\.s:(.*?)>]/);
+					if (matchArr === null || matchArr.length <= 1) {
+						// not match
+						continue;
+					}
+
+					const headerContent = matchArr[1];
+					const stylesFromHeaderContent = this.extractStylesFromHeaderContent(headerContent);
+					this.colStyles[colIdx] = deepmerge(this.colStyles[colIdx], stylesFromHeaderContent);
+				}
+			}
+		}
+		// ====  ZN FORK END  ====
+
 		if (this.headerCol !== -1) this.rowStyles = this.contentGrid[0].map((_, i) =>
 			this.contentGrid.map(row => row[i])
 		)[this.headerCol].map(rowHead => {
@@ -243,6 +264,27 @@ export class SheetElement extends MarkdownRenderChild {
 			);
 			return { classes, styles };
 		});
+
+
+		// ==== ZN FORK START ====
+		// any content like "[<row.s: ---: ~ .class1 {"font-size": "2px"} >]" is ROW style in any header COL
+		if (this.headerCol !== -1) {
+			for (let rowIdx = 0; rowIdx < this.contentGrid.length; rowIdx++) {
+				for (let colIdx = 0; colIdx < this.headerCol; colIdx++) {
+					const colHeaderCell = this.contentGrid[rowIdx][colIdx];
+					const matchArr = colHeaderCell.match(/\[<row\.s:(.*?)>]/);
+					if (matchArr === null || matchArr.length <= 1) {
+						// not match
+						continue;
+					}
+
+					const headerContent = matchArr[1];
+					const stylesFromHeaderContent = this.extractStylesFromHeaderContent(headerContent);
+					this.rowStyles[colIdx] = deepmerge(this.rowStyles[rowIdx], stylesFromHeaderContent);
+				}
+			}
+		}
+		// ====  ZN FORK END  ====
 	}
 
 	buildDomTable() {
@@ -369,4 +411,27 @@ export class SheetElement extends MarkdownRenderChild {
 
 		return this.domGrid[rowIndex][columnIndex] = cell;
 	}
+
+	// ==== ZN FORK START ====
+	extractStylesFromHeaderContent(headerContent: string) {
+		let styles: Properties = {};
+		const alignment = headerContent.match(this.headerRE);
+		if (!alignment) return { classes: [], styles };
+		else if (alignment[1] && alignment[2]) styles['textAlign'] = 'center';
+		else if (alignment[1]) styles['textAlign'] = 'left';
+		else if (alignment[2]) styles['textAlign'] = 'right';
+
+		// Parse ~
+		const classes = alignment[3]?.match(/\.\S+/g)?.map(String) || [];
+		classes.forEach(cssClass =>
+			styles = {
+				...styles,
+				...(this.styles?.[cssClass.slice(1)]
+						|| {}
+				)
+			}
+		);
+		return { classes, styles };
+	}
+	// ====  ZN FORK END  ====
 }
